@@ -124,4 +124,33 @@ describe('bioxide template', () => {
         expect(screen.getByText(/e/))
             .toHaveAttribute('data-abc')
     })
+
+    it('design/each.tpl', () => {
+        const Fn = build('each')
+        const items = [
+            { name: 'Apples', qty: 5 },
+            { name: 'Bananas', qty: 3 },
+            { name: 'Oranges', qty: 2 }
+        ]
+        render(createElement(Fn, { items }))
+
+        expect(screen.getByText('Shopping list')).toBeInTheDocument()
+        expect(screen.getByText('0 Apples x 5')).toBeInTheDocument()
+        expect(screen.getByText('1 Bananas x 3')).toBeInTheDocument()
+        expect(screen.getByText('2 Oranges x 2')).toBeInTheDocument()
+    })
+
+    it('design/event.tpl', () => {
+        const Fn = build('event')
+        render(createElement(Fn))
+
+        expect(screen.getByText('() => xxx(state)')).toBeInTheDocument()
+    })
+
+    it('design/register.tpl', () => {
+        const Fn = build('register')
+        render(createElement(Fn))
+
+        expect(screen.getByText(/^$/)).toBeInTheDocument()
+    })
 })

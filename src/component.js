@@ -67,8 +67,6 @@ export default class Component {
         const hasEventBus = this.fragment.hasEventBus
         const { dev } = this.options
 
-        console.log(this.ast.css)
-
         code.addLine(`import React from 'react'`)
         if (hasEventBus) {
             if (dev) {
