@@ -64,6 +64,6 @@ export default function attributes(fragment, attributes) {
     })
     if (eventBusConfig) {
         fragment.hasEventBus = true
-        fragment.addCode(`__={typeof __ !== 'undefined' && __.create(${objString(eventBusConfig)})}`)
+        fragment.addCode(`__={typeof __ !== 'undefined' ? __ : eventBus.create(${objString(eventBusConfig)})}`)
     }
 }

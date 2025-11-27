@@ -124,4 +124,59 @@ describe('bioxide template', () => {
         expect(screen.getByText(/e/))
             .toHaveAttribute('data-abc')
     })
+
+    it('design/event.tpl', () => {
+        // 测试事件触发功能
+        const Fn = build('event', true)
+        
+        // 创建模拟的事件总线实例
+        let testEventPayload = null
+        const mockEventBus = {
+            trigger: (eventName, payload) => {
+                if (eventName === 'test') {
+                    testEventPayload = payload
+                }
+            }
+        }
+        
+        // 渲染组件并传递模拟的事件总线实例
+        render(createElement(Fn, { __: mockEventBus }))
+        
+        // 模拟点击事件，触发xxx函数
+        const eventElement = screen.getByTestId('event-test')
+        fireEvent.click(eventElement)
+        
+        // 验证事件是否被触发并传递了正确的payload
+        expect(testEventPayload).toBe('test value')
+    })
+
+    it('design/register.tpl', () => {
+        // 测试事件注册功能
+        const Fn = build('register')
+        
+        // 创建事件总线实例
+        const eventInstance = eventBus.create()
+        
+        // 渲染组件并传递事件总线实例
+        render(createElement(Fn, { __: eventInstance }))
+        
+        // 模拟submit事件触发
+        let consoleLogCalled = false
+        const originalConsoleLog = console.log
+        console.log = () => {
+            consoleLogCalled = true
+        }
+        
+        // 触发submit事件
+        eventInstance.trigger('submit', { test: 'data' })
+        
+        // 验证事件处理函数是否被调用
+        expect(consoleLogCalled).toBe(true)
+        
+        // 恢复原始console.log
+        console.log = originalConsoleLog
+        
+        // 清理事件总线
+        eventInstance.destroy()
+    })
 })
