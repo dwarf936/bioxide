@@ -80,7 +80,7 @@ export default class Component {
         // class build
         if (this.jsOptions) {
             const { defaultState, initState, reducer, register } = this.jsOptions
-            code.addBlock(`${generate(this.ast.instance.content)}`)
+            // 将函数定义移到组件内部，以便访问$trigger变量
             code.addBlock(this.fragment.codes[0].map(code => code.toString()).join('\n'))
             if (reducer) {
                 // TODO: add reducer helper
@@ -97,7 +97,7 @@ export default class Component {
                 code.addBlock(`this.state = ${this.fragment.graph.build('state')}`)
             }
             code.addLine(`this.props = props`)
-            code.addLine(`this.__ = props.__${hasEventBus ? ' || eventBus.create()' : ''}`)
+            code.addLine(`this.__ = props.__ || (__ || eventBus.create())`)
             code.indent--
             code.addLine(`}`)
             code.addLine(`componentDidMount() {`)
@@ -126,6 +126,8 @@ export default class Component {
             code.addLine(`const { state, props, __ } = this`)
             code.addLine(`const setState = this.setState.bind(this)`)
             code.addLine(`const $trigger = __ ? __.trigger : function () { console.warn('you should not use $trigger in thie component.') }`)
+            // 添加函数定义到组件内部
+            code.addBlock(`${generate(this.ast.instance.content)}`)
             code.addBlock(`${this.fragment.codes[1].toString(1)}`)
             code.indent--
             code.addLine(`}`)
@@ -133,17 +135,18 @@ export default class Component {
             code.addLine(`}`)
         } else {
             const stateGraph = this.fragment.graph.build('state')
-            if (this.ast.instance && this.ast.instance.content) {
-                code.addBlock(`${generate(this.ast.instance.content)}`)
-            }
             code.addBlock(this.fragment.codes[0].map(code => code.toString()).join('\n'))
             code.addLine('export default (props) => {')
             code.indent++
             if (stateGraph !== '{\n}') {
                 code.addBlock(`console.warn(\`component state is undefined, but template use it\`, 'state graph === ', ${stateGraph})`)
             }
-            code.addLine(`const __ = props.__${hasEventBus ? ' || eventBus.create()' : ''}`)
+            code.addLine(`const __ = props.__ || (__ || eventBus.create())`)
             code.addLine(`const $trigger = __ ? __.trigger : function () { console.warn('you should not use $trigger in thie component.') }`)
+            // 添加函数定义到组件内部
+            if (this.ast.instance && this.ast.instance.content) {
+                code.addBlock(`${generate(this.ast.instance.content)}`)
+            }
             code.addBlock(`${this.fragment.codes[1].toString(1)}`)
             code.indent--
             code.addLine('}')
