@@ -19,12 +19,16 @@ function build(name, debug) {
                 return `./${name.slice(4)}.tpl`
             },
         })
-    const { code } = transformSync(ncode, {
+    const { code } = transformSync(ncode, { 
         presets: ["@babel/preset-react"],
         plugins: ["@babel/plugin-transform-modules-commonjs"]
     })
 
-    debug && console.log('ncdoe === ', ncode, 'code === ', code)
+    if (debug) {
+        console.log(`Compiled code for ${name}.tpl:`)
+        console.log('ncode:', ncode)
+        console.log('code:', code)
+    }
 
     const mod = { exports: {} }
     const req = function (name) {
@@ -123,5 +127,71 @@ describe('bioxide template', () => {
             .toHaveClass('test')
         expect(screen.getByText(/e/))
             .toHaveAttribute('data-abc')
+    })
+
+    it('design/event.tpl', () => {
+        const Fn = build('event')
+        // 创建事件总线实例
+        const eventBusInstance = eventBus.create()
+        let eventPayload = null
+        
+        // 注册测试事件
+        eventBusInstance.register('test', (payload) => {
+            eventPayload = payload
+        })
+        
+        // 保存原始 console.warn
+        const originalWarn = console.warn
+        let warnMessage = null
+        console.warn = (message) => {
+            warnMessage = message
+            originalWarn(message)
+        }
+        
+        // 将事件总线实例通过 props.__ 传递给组件
+        render(createElement(Fn, { __: eventBusInstance }))
+        
+        // 测试事件触发
+        const testElement = screen.getByTestId('event-test')
+        
+        // 触发点击事件
+        fireEvent.click(testElement)
+        
+        // 验证事件是否被触发并传递了正确的 payload
+        expect(eventPayload).toBe('test value')
+        
+        // 验证没有输出警告
+        expect(warnMessage).not.toBe('you should not use $trigger in thie component.')
+        
+        // 销毁事件注册
+        eventBusInstance.destroy()
+        
+        // 恢复 console.warn
+        console.warn = originalWarn
+    })
+
+    it('design/register.tpl', () => {
+        const Fn = build('register')
+        // 创建事件总线实例
+        const eventBusInstance = eventBus.create()
+        let consoleOutput = null
+        
+        // 保存原始 console.log
+        const originalLog = console.log
+        console.log = (message) => {
+            consoleOutput = message
+        }
+        
+        // 将事件总线实例通过 props.__ 传递给组件
+        render(createElement(Fn, { __: eventBusInstance }))
+        
+        // 触发 submit 事件
+        eventBusInstance.trigger('submit', 'test payload')
+        
+        // 验证事件是否被处理
+        expect(consoleOutput).toBe('hello world')
+        
+        // 恢复原始 console.log
+        console.log = originalLog
     })
 })
