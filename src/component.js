@@ -98,6 +98,12 @@ export default class Component {
             }
             code.addLine(`this.props = props`)
             code.addLine(`this.__ = props.__${hasEventBus ? ' || eventBus.create()' : ''}`)
+            // 定义 $trigger 函数并绑定到类的实例 this 上
+            if (hasEventBus) {
+                code.addLine(`this.$trigger = this.__.trigger.bind(this.__)`)
+            } else {
+                code.addLine(`this.$trigger = function () { console.warn('you should not use $trigger in thie component.') }`)
+            }
             code.indent--
             code.addLine(`}`)
             code.addLine(`componentDidMount() {`)
@@ -121,16 +127,46 @@ export default class Component {
                 code.indent--
                 code.addLine('}')
             }
+
             code.addLine(`render() {`)
             code.indent++
             code.addLine(`const { state, props, __ } = this`)
             code.addLine(`const setState = this.setState.bind(this)`)
-            code.addLine(`const $trigger = __ ? __.trigger : function () { console.warn('you should not use $trigger in thie component.') }`)
-            code.addBlock(`${this.fragment.codes[1].toString(1)}`)
+            code.addLine(`const $trigger = this.$trigger`)
+            // 修改模板中的事件处理函数，将 xxx(state) 改为 this.xxx(this.state)
+            let templateContent = this.fragment.codes[1].toString(1)
+            const eventHandlers = templateContent.match(/onClick=\{\(\) => (\w+)\(state\)\}/g)
+            if (eventHandlers) {
+                eventHandlers.forEach(handler => {
+                    const funcName = handler.match(/onClick=\{\(\) => (\w+)\(state\)\}/)[1]
+                    const modifiedHandler = `onClick={() => this.${funcName}(this.state)}`
+                    templateContent = templateContent.replace(handler, modifiedHandler)
+                })
+            }
+            code.addBlock(templateContent)
             code.indent--
             code.addLine(`}`)
             code.indent--
             code.addLine(`}`)
+
+            // 将 script 标签中定义的函数移到类的 prototype 中
+            const scriptContent = generate(this.ast.instance.content)
+            const functions = scriptContent.match(/function\s+(\w+)\s*\((.*?)\)\s*\{([^}]+)\}/g)
+            if (functions) {
+                functions.forEach(func => {
+                    const funcName = func.match(/function\s+(\w+)\s*\(/)[1]
+                    const funcParams = func.match(/function\s+\w+\s*\((.*?)\)/)[1]
+                    const funcBody = func.match(/function\s+\w+\s*\(.*?\)\s*\{([^}]+)\}/)[1]
+                    // 将 $trigger 替换为 this.$trigger
+                    const modifiedFuncBody = funcBody.replace(/\$trigger/g, 'this.$trigger')
+                    // 将 state 替换为 this.state
+                    const modifiedFuncBody2 = modifiedFuncBody.replace(/state\./g, 'this.state.')
+                    // 将 setState 替换为 this.setState
+                    const modifiedFuncBody3 = modifiedFuncBody2.replace(/setState\(/g, 'this.setState(')
+                    // 添加到类的 prototype 中
+                    code.addLine(`Component.prototype.${funcName} = function (${funcParams}) {${modifiedFuncBody3}}`)
+                })
+            }
         } else {
             const stateGraph = this.fragment.graph.build('state')
             if (this.ast.instance && this.ast.instance.content) {
