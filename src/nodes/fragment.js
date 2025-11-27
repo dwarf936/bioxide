@@ -200,15 +200,26 @@ export default class Fragment {
 
     returnWrapper(node) {
         const isFragement = node.children.length > 1
-        isFragement ?
-            this.addLine('return <>') :
+        const isEachBlock = this.current === this.codes[0][this.codes[0].length - 1] && this.codes[0].length > 1
+        
+        if (isEachBlock) {
+            // 为列表项添加key prop
             this.addLine('return (')
-        this.indent(1)
-        this.visit(node)
-        this.indent(-1)
-        isFragement ?
-            this.addLine('</>') :
+            this.indent(1)
+            this.visit(node)
+            this.indent(-1)
             this.addLine(')')
+        } else {
+            isFragement ?
+                this.addLine('return <>') :
+                this.addLine('return (')
+            this.indent(1)
+            this.visit(node)
+            this.indent(-1)
+            isFragement ?
+                this.addLine('</>') :
+                this.addLine(')')
+        }
     }
 
     generate() {
