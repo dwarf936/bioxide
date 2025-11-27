@@ -124,4 +124,34 @@ describe('bioxide template', () => {
         expect(screen.getByText(/e/))
             .toHaveAttribute('data-abc')
     })
+
+    it('design/each.tpl', () => {
+        const Fn = build('each')
+        const items = [
+            { name: 'Apples', qty: 5 },
+            { name: 'Bananas', qty: 3 },
+            { name: 'Oranges', qty: 2 }
+        ]
+        render(createElement(Fn, { items }))
+
+        expect(screen.getByText(/Shopping list/)).toBeInTheDocument()
+        expect(screen.getByText(/0/)).toBeInTheDocument()
+        expect(screen.getByText(/Apples/)).toBeInTheDocument()
+        expect(screen.getByText(/5/)).toBeInTheDocument()
+        expect(screen.getByText(/1/)).toBeInTheDocument()
+        expect(screen.getByText(/Bananas/)).toBeInTheDocument()
+        expect(screen.getByText(/3/)).toBeInTheDocument()
+        expect(screen.getByText(/2/)).toBeInTheDocument()
+        expect(screen.getByText(/Oranges/)).toBeInTheDocument()
+        expect(screen.getByText(/2/)).toBeInTheDocument()
+    })
+
+    it('design/event.tpl', () => {
+        const Fn = build('event')
+        render(createElement(Fn))
+
+        expect(screen.getByText((content, element) => {
+            return element.tagName.toLowerCase() === 'p';
+        })).toBeInTheDocument()
+    })
 })

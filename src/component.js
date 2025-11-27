@@ -69,6 +69,8 @@ export default class Component {
 
         console.log(this.ast.css)
 
+        console.log(this.ast.css)
+
         code.addLine(`import React from 'react'`)
         if (hasEventBus) {
             if (dev) {
