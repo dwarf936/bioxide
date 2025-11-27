@@ -1,11 +1,13 @@
 <script>
     function xxx(state) {
-        console.log(state.xxx)
+        $trigger('test', state.xxx)
     }
 
     export default  {
-        
+        defaultState: {
+            xxx: 'test value'
+        }
     }
 </script>
 
-<p>{() => xxx(state)}</p>
+<p data-testid="event-test" onClick={() => xxx(state)}></p>
