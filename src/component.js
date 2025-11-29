@@ -2,6 +2,7 @@ import Fragment from './nodes/fragment.js'
 import { walk } from 'svelte/compiler'
 import { generate } from 'astring'
 import Code from './nodes/code.js'
+import { SourceMapGenerator } from 'source-map'
 
 
 export default class Component {
@@ -63,7 +64,11 @@ export default class Component {
 
     generate() {
         this.fragment.generate()
-        const code = new Code
+        const sourceMapOption = { 
+            sourceMap: this.options.sourceMap,
+            source: this.options.sourceFile || 'component.tpl'
+        }
+        const code = new Code(sourceMapOption)
         const hasEventBus = this.fragment.hasEventBus
         const { dev } = this.options
 
@@ -81,12 +86,12 @@ export default class Component {
         if (this.jsOptions) {
             const { defaultState, initState, reducer, register } = this.jsOptions
             code.addBlock(`${generate(this.ast.instance.content)}`)
-            code.addBlock(this.fragment.codes[0].map(code => code.toString()).join('\n'))
+            code.addBlock(this.fragment.codes[0].toString())
             if (reducer) {
                 // TODO: add reducer helper
             }
 
-            code.addLine(`export default class Component extends React.Component {`)
+            code.addLine(`export default class ${this.options.componentName || 'Component'} extends React.Component {`)
             code.indent++
             code.addLine(`constructor(props) {`)
             code.indent++
@@ -126,7 +131,11 @@ export default class Component {
             code.addLine(`const { state, props, __ } = this`)
             code.addLine(`const setState = this.setState.bind(this)`)
             code.addLine(`const $trigger = __ ? __.trigger : function () { console.warn('you should not use $trigger in thie component.') }`)
-            code.addBlock(`${this.fragment.codes[1].toString(1)}`)
+            // 添加fragment的代码，同时保留sourceMap信息
+            const fragmentCodeLines = this.fragment.codes[1].toString(1).trim().split('\n')
+            for (const line of fragmentCodeLines) {
+                code.addLine(line)
+            }
             code.indent--
             code.addLine(`}`)
             code.indent--
@@ -136,7 +145,7 @@ export default class Component {
             if (this.ast.instance && this.ast.instance.content) {
                 code.addBlock(`${generate(this.ast.instance.content)}`)
             }
-            code.addBlock(this.fragment.codes[0].map(code => code.toString()).join('\n'))
+            code.addBlock(this.fragment.codes[0].toString())
             code.addLine('export default (props) => {')
             code.indent++
             if (stateGraph !== '{\n}') {
@@ -149,6 +158,54 @@ export default class Component {
             code.addLine('}')
         }        
 
+        if (this.options.sourceMap) {
+            // 调试：查看所有Code实例的情况
+            console.log('Code instances:');
+            console.log('  fragment.codes[0]:', this.fragment.codes[0]);
+            console.log('  fragment.codes[1]:', this.fragment.codes[1]);
+            console.log('  code:', code);
+            
+            // 合并所有Code实例的SourceMap数据
+            const sourceMap = [
+                ...(this.fragment.codes[0].getSourceMap() || []),
+                ...(this.fragment.codes[1].getSourceMap() || []),
+                ...(code.getSourceMap() || [])
+            ]
+            
+            // 调试信息
+            console.log('fragment.values:', this.fragment.values)
+            console.log('fragment.graph.properties:', this.fragment.graph.properties)
+            
+            // 查看过滤后的names
+            const filteredNames = Array.from(new Set([...this.fragment.values.filter(name => name !== 'props' && name !== '$trigger'), ...this.fragment.graph.properties]))
+            console.log('filteredNames:', filteredNames)
+            
+            // 使用SourceMapGenerator生成标准的SourceMap格式
+            console.log('Creating SourceMapGenerator with:');
+            console.log('  sources:', [this.options.sourceFile || 'component.tpl']);
+            console.log('  names:', filteredNames);
+            
+            const generator = new SourceMapGenerator({
+                file: this.options.outputFile || 'component.js',
+                sourceRoot: this.options.sourceRoot || '',
+                sources: [this.options.sourceFile || 'component.tpl'],
+                names: filteredNames
+            })
+            
+            console.log('Adding', sourceMap.length, 'mappings to sourceMap');
+            sourceMap.forEach(map => {
+                console.log('  Mapping:', map);
+                generator.addMapping(map)
+            })
+            
+            console.log('SourceMapGenerator content:', JSON.stringify(generator, null, 2))
+            
+            return {
+                code: code.toString(),
+                sourceMap: generator.toJSON()
+            }
+        }
+        
         return code.toString()
     }
 }

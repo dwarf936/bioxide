@@ -1,4 +1,5 @@
 export default (fragment, node) => {
-    fragment.addCode(node.data)
+    const originalPos = node.loc ? { line: node.loc.start.line, column: node.loc.start.column } : null
+    fragment.addCode(node.data, originalPos)
     fragment.noNeedN()
 }
