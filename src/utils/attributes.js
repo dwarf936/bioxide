@@ -10,12 +10,14 @@ export default function attributes(fragment, attributes) {
         // TODO: cannot create graph for spread objects
         if (attribute.type === 'Spread') {
             const expression = fragment.expression(attribute.expression)
-            fragment.addCode(`{...${expression.string}}`)
+            const originalPos = attribute.loc ? { line: attribute.loc.start.line, column: attribute.loc.start.column } : null
+            fragment.addCode(`{...${expression.string}}`, originalPos)
             return
         }
 
         if (attributeMap[attribute.name]) {
-            fragment.addCode(`${attributeMap[attribute.name]}=`)
+            const originalPos = attribute.loc ? { line: attribute.loc.start.line, column: attribute.loc.start.column } : null
+            fragment.addCode(`${attributeMap[attribute.name]}=`, originalPos)
         } else if (attribute.name.indexOf('bioxide:') > -1) {
             eventBusConfig = eventBusConfig || {}
             const register = attribute.name.indexOf('bioxide:r') > -1 && attribute.value[0].data
@@ -26,7 +28,8 @@ export default function attributes(fragment, attributes) {
                 eventBusConfig[trigger[0]] = trigger[1]
             }
         } else {
-            fragment.addCode(`${attribute.name}=`)
+            const originalPos = attribute.loc ? { line: attribute.loc.start.line, column: attribute.loc.start.column } : null
+            fragment.addCode(`${attribute.name}=`, originalPos)
         }
         if (attribute.type === 'Attribute') {
             if (attribute.name.indexOf('bioxide:') > -1) {
@@ -38,8 +41,9 @@ export default function attributes(fragment, attributes) {
                 'mustacheTag' : attribute.value[0].type === 'Text' ?
                 'template' : 'mustacheTag'
 
+            const originalPos = attribute.loc ? { line: attribute.loc.start.line, column: attribute.loc.start.column } : null
             typeFlag === 'template' ? 
-                fragment.addCode('"') : fragment.addCode('{')
+                fragment.addCode('"', originalPos) : fragment.addCode('{', originalPos)
             const values = []
             attribute.value.forEach(v => {
                 if (v.type === 'Text') {
@@ -54,10 +58,10 @@ export default function attributes(fragment, attributes) {
                 }
             })
             attribute.value.length > 1 ?
-                fragment.addCode(`[${values.join(', ')}].join('')`) :
-                fragment.addCode(`${values[0]}`)
+                fragment.addCode(`[${values.join(', ')}].join('')`, originalPos) :
+                fragment.addCode(`${values[0]}`, originalPos)
             typeFlag === 'template' ? 
-                fragment.addCode('" ') : fragment.addCode('} ')
+                fragment.addCode('" ', originalPos) : fragment.addCode('} ', originalPos)
         } else {
             throw new Error(`${attribute.type} is not supported`)
         }

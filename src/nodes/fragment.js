@@ -46,7 +46,11 @@ export default class Fragment {
         this.ast = ast
         this.code = code
         // define, main
-        this.codes = [[new Code], new Code]
+        const sourceMapOption = { 
+            sourceMap: component.options.sourceMap,
+            source: component.options.sourceFile || 'component.tpl'
+        }
+        this.codes = [new Code(sourceMapOption), new Code(sourceMapOption)]
         this.stack = []
         this.current = this.codes[1]
         this.count = count()
@@ -146,10 +150,9 @@ export default class Fragment {
         this.stack.push(this.current)
         let current
         if (isFirst) {
-            current = this.codes[0][0]
+            current = this.codes[0]
         } else {
-            current = new Code
-            this.codes[0].push(current)
+            current = new Code(this.codes[0])
         }
         this.current = current
     }
@@ -158,12 +161,12 @@ export default class Fragment {
         this.current = this.stack.pop()
     }
 
-    addCode(code) {
-        this.current.addCode(code)
+    addCode(code, originalPos) {
+        this.current.addCode(code, originalPos)
     }
 
-    addLine(line) {
-        this.current.addLine(line)
+    addLine(line, originalPos) {
+        this.current.addLine(line, originalPos)
     }
 
     addBlock(block) {
