@@ -45,10 +45,11 @@ export default class Fragment {
     constructor(component, ast, code) {
         this.ast = ast
         this.code = code
+        this.component = component
         // define, main
-        this.codes = [[new Code], new Code]
+        this.codes = [[], []] // Will be initialized later
         this.stack = []
-        this.current = this.codes[1]
+        this.current = null
         this.count = count()
         this.values = ['props', '$trigger']
         this.depCom = []
@@ -148,7 +149,7 @@ export default class Fragment {
         if (isFirst) {
             current = this.codes[0][0]
         } else {
-            current = new Code
+            current = new Code(this.component.sourceMap)
             this.codes[0].push(current)
         }
         this.current = current
@@ -158,8 +159,8 @@ export default class Fragment {
         this.current = this.stack.pop()
     }
 
-    addCode(code) {
-        this.current.addCode(code)
+    addCode(code, sourcePosition = null) {
+        this.current.addCode(code, sourcePosition)
     }
 
     addLine(line) {
@@ -188,30 +189,60 @@ export default class Fragment {
             if (!nodeGenerator) {
                 throw new Error(`No ${node.type} Node implementation found`)
             }
+            
+            // Create source position for this node
+            const sourcePos = node.start !== undefined ? {
+                line: this.getLineNumber(node.start),
+                column: this.getColumnNumber(node.start)
+            } : null
+            
             if (typeof nodeGenerator === 'function') {
-                nodeGenerator(this, node)
+                nodeGenerator(this, node, sourcePos)
             } else if (nodeGenerator.enter && nodeGenerator.leave) {
-                nodeGenerator.enter(this, node)
+                nodeGenerator.enter(this, node, sourcePos)
                 this.visit(node)
-                nodeGenerator.leave(this, node)
+                nodeGenerator.leave(this, node, sourcePos)
             }
         })
     }
 
     returnWrapper(node) {
-        const isFragement = node.children.length > 1
-        isFragement ?
-            this.addLine('return <>') :
-            this.addLine('return (')
+        const isFragment = node.children.length > 1
+        const sourcePos = node.start !== undefined ? {
+            line: this.getLineNumber(node.start),
+            column: this.getColumnNumber(node.start)
+        } : null
+        
+        isFragment ?
+            this.addLine('return <>', sourcePos) :
+            this.addLine('return (', sourcePos)
         this.indent(1)
         this.visit(node)
         this.indent(-1)
-        isFragement ?
-            this.addLine('</>') :
-            this.addLine(')')
+        isFragment ?
+            this.addLine('</>', sourcePos) :
+            this.addLine(')', sourcePos)
+    }
+    
+    getLineNumber(position) {
+        const lines = this.code.substring(0, position).split('\n')
+        return lines.length
+    }
+    
+    getColumnNumber(position) {
+        const lines = this.code.substring(0, position).split('\n')
+        return lines[lines.length - 1].length + 1
     }
 
+    initializeCodes() {
+        // Initialize Code instances with the component's sourceMap
+        this.codes[0] = [new Code(this.component.sourceMap)]
+        this.codes[1] = new Code(this.component.sourceMap)
+        this.current = this.codes[1]
+    }
+    
     generate() {
+        this.initializeCodes()
         this.returnWrapper(this.ast)
         this.graph.build()
     }

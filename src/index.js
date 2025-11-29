@@ -8,6 +8,5 @@ export default (code, options) => {
             .replace(/\@trigger:(\w+)=(\"|\{)/g, 'bioxide:t$1=$2')
     )
     const component = new Component(code, ast, options)
-    return component.generate()
-    // console.log(ast)
+    return component.generate(options)
 }

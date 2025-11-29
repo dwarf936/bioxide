@@ -3,6 +3,7 @@
     import { Button } from 'antd'
 
     function handleClick({ $trigger, count }) {
+        console.log('hello')
         $trigger('change', { count })
     }
 </script>

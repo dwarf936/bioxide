@@ -2,6 +2,7 @@ import Fragment from './nodes/fragment.js'
 import { walk } from 'svelte/compiler'
 import { generate } from 'astring'
 import Code from './nodes/code.js'
+import { createSourceMap } from './source-map.js'
 
 
 export default class Component {
@@ -10,6 +11,8 @@ export default class Component {
         this.ast = ast
         this.options = options
         this.jsOptions = null
+        this.sourceMap = null
+        this.sourceFileName = options.sourceFileName || 'template.tpl'
         this.walk_js()
         this.fragment = new Fragment(this, ast.html, code)
     }
@@ -61,13 +64,17 @@ export default class Component {
         }
     }
 
-    generate() {
+    generate(options = {}) {
+        if (options.sourceMap) {
+            this.sourceMap = createSourceMap(this.sourceFileName, this.code)
+        }
+        
         this.fragment.generate()
-        const code = new Code
+        const code = new Code(this.sourceMap)
         const hasEventBus = this.fragment.hasEventBus
         const { dev } = this.options
 
-        console.log(this.ast.css)
+
 
         code.addLine(`import React from 'react'`)
         if (hasEventBus) {
@@ -149,6 +156,11 @@ export default class Component {
             code.addLine('}')
         }        
 
-        return code.toString()
+        const result = {
+            code: code.toString(),
+            map: this.sourceMap ? this.sourceMap.toJSON() : null
+        }
+        
+        return this.options.sourceMap ? result : result.code
     }
 }
